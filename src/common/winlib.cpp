@@ -33,10 +33,7 @@
 const TCHAR* CWINDOW_CLASSNAME = _T("WinLib Universal Window");
 const TCHAR* CWINDOW_CLASSNAME2 = _T("WinLib Universal Window2"); // nema CS_VREDRAW | CS_HREDRAW
 
-#ifndef _UNICODE
-const WCHAR* CWINDOW_CLASSNAMEW = L"WinLib Universal Window Unicode";
-const WCHAR* CWINDOW_CLASSNAME2W = L"WinLib Universal Window Unicode2"; // nema CS_VREDRAW | CS_HREDRAW
-#endif                                                                  // _UNICODE
+// Removed CWINDOW_CLASSNAMEW and CWINDOW_CLASSNAME2W definitions
 
 CWinLibHelp* WinLibHelp = NULL;
 CWindowsManager WindowsManager;
@@ -176,79 +173,11 @@ HWND CWindow::Create(LPCTSTR lpszClassName,  // address of registered class name
                     lpvParam);
 }
 
-#ifndef _UNICODE
-
-HWND CWindow::CreateExW(DWORD dwExStyle,        // extended window style
-                        LPCWSTR lpszClassName,  // address of registered class name
-                        LPCWSTR lpszWindowName, // address of window name
-                        DWORD dwStyle,          // window style
-                        int x,                  // horizontal position of window
-                        int y,                  // vertical position of window
-                        int nWidth,             // window width
-                        int nHeight,            // window height
-                        HWND hwndParent,        // handle of parent or owner window
-                        HMENU hmenu,            // handle of menu or child-window identifier
-                        HINSTANCE hinst,        // handle of application instance
-                        LPVOID lpvParam)        // ukazatel na objekt vytvareneho okna
-{
-    HWND hWnd = CreateWindowExW(dwExStyle,
-                                lpszClassName,
-                                lpszWindowName,
-                                dwStyle,
-                                x,
-                                y,
-                                nWidth,
-                                nHeight,
-                                hwndParent,
-                                hmenu,
-                                hinst,
-                                lpvParam);
-    if (hWnd != 0)
-    {
-        if (WindowsManager.GetWindowPtr(hWnd) == NULL) // pokud se jeste neni ve WindowsManageru
-            AttachToWindow(hWnd);                      // tak ho pridame -> subclassing
-    }
-    return hWnd;
-}
-
-HWND CWindow::CreateW(LPCWSTR lpszClassName,  // address of registered class name
-                      LPCWSTR lpszWindowName, // address of window name
-                      DWORD dwStyle,          // window style
-                      int x,                  // horizontal position of window
-                      int y,                  // vertical position of window
-                      int nWidth,             // window width
-                      int nHeight,            // window height
-                      HWND hwndParent,        // handle of parent or owner window
-                      HMENU hmenu,            // handle of menu or child-window identifier
-                      HINSTANCE hinst,        // handle of application instance
-                      LPVOID lpvParam)        // ukazatel na objekt vytvareneho okna
-{
-    return CreateExW(0,
-                     lpszClassName,
-                     lpszWindowName,
-                     dwStyle,
-                     x,
-                     y,
-                     nWidth,
-                     nHeight,
-                     hwndParent,
-                     hmenu,
-                     hinst,
-                     lpvParam);
-}
-
-#endif // _UNICODE
+// Removed CreateW and CreateExW method implementations
 
 void CWindow::AttachToWindow(HWND hWnd)
 {
-#ifdef _UNICODE
-    DefWndProc = (WNDPROC)GetWindowLongPtr(hWnd, GWLP_WNDPROC);
-#else  // _UNICODE
-    if (UnicodeWnd)
-        DefWndProc = (WNDPROC)GetWindowLongPtrW(hWnd, GWLP_WNDPROC);
-    else
-        DefWndProc = (WNDPROC)GetWindowLongPtr(hWnd, GWLP_WNDPROC);
-#endif // _UNICODE
+    DefWndProc = (WNDPROC)GetWindowLongPtr(hWnd, GWLP_WNDPROC); // Will resolve to GetWindowLongPtrW
     if (DefWndProc == NULL)
     {
         TRACE_ET(_T("Invalid handle of window. hWnd = ") << hWnd);
@@ -262,20 +191,9 @@ void CWindow::AttachToWindow(HWND hWnd)
         return;
     }
     HWindow = hWnd;
-#ifdef _UNICODE
-    SetWindowLongPtr(HWindow, GWLP_WNDPROC, (LONG_PTR)CWindowProc);
-#else  // _UNICODE
-    if (UnicodeWnd)
-        SetWindowLongPtrW(HWindow, GWLP_WNDPROC, (LONG_PTR)CWindowProcW);
-    else
-        SetWindowLongPtr(HWindow, GWLP_WNDPROC, (LONG_PTR)CWindowProc);
-#endif // _UNICODE
+    SetWindowLongPtr(HWindow, GWLP_WNDPROC, (LONG_PTR)CWindowProc); // Will resolve to SetWindowLongPtrW
 
-    if (DefWndProc == CWindow::CWindowProc
-#ifndef _UNICODE
-        || DefWndProc == CWindow::CWindowProcW
-#endif    // _UNICODE
-        ) // to by byla rekurze
+    if (DefWndProc == CWindow::CWindowProc) // to by byla rekurze
     {
         TRACE_CT(_T("This should never happen."));
         DefWndProc = GetDefWindowProc();
@@ -301,14 +219,7 @@ void CWindow::DetachWindow()
     if (HWindow != NULL)
     {
         WindowsManager.DetachWindow(HWindow);
-#ifdef _UNICODE
-        SetWindowLongPtr(HWindow, GWLP_WNDPROC, (LONG_PTR)DefWndProc);
-#else  // _UNICODE
-        if (UnicodeWnd)
-            SetWindowLongPtrW(HWindow, GWLP_WNDPROC, (LONG_PTR)DefWndProc);
-        else
-            SetWindowLongPtr(HWindow, GWLP_WNDPROC, (LONG_PTR)DefWndProc);
-#endif // _UNICODE
+        SetWindowLongPtr(HWindow, GWLP_WNDPROC, (LONG_PTR)DefWndProc); // Will resolve to SetWindowLongPtrW
         HWindow = NULL;
     }
 }
@@ -332,33 +243,12 @@ CWindow::WindowProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
         return TRUE; // pokud to neni child, ukoncime zpracovani F1
     }
     }
-#ifndef _UNICODE
-    if (UnicodeWnd)
-        return CallWindowProcW((WNDPROC)DefWndProc, HWindow, uMsg, wParam, lParam);
-#endif // _UNICODE
-    return CallWindowProc((WNDPROC)DefWndProc, HWindow, uMsg, wParam, lParam);
+    return CallWindowProc((WNDPROC)DefWndProc, HWindow, uMsg, wParam, lParam); // Will resolve to CallWindowProcW
 }
 
-#ifndef _UNICODE
+// CWindowProcW and CWindowProcInt are removed. CWindowProc is now the main static callback.
 LRESULT CALLBACK
 CWindow::CWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-    return CWindowProcInt(hwnd, uMsg, wParam, lParam, FALSE /*unicode*/);
-}
-
-LRESULT CALLBACK
-CWindow::CWindowProcW(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-    return CWindowProcInt(hwnd, uMsg, wParam, lParam, TRUE /*unicode*/);
-}
-#endif // _UNICODE
-
-LRESULT CALLBACK
-#ifdef _UNICODE
-CWindow::CWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-#else  // _UNICODE
-CWindow::CWindowProcInt(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL unicode)
-#endif // _UNICODE
 {
     CWindow* wnd;
     switch (uMsg)
@@ -378,11 +268,8 @@ CWindow::CWindowProcInt(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
         else
         {
             wnd->HWindow = hwnd;
-#ifndef _UNICODE
-            if (wnd->UnicodeWnd != unicode)
-                TRACE_C("Incompatible windows procedure.");
-#endif                                                // _UNICODE
-                                                      //--- zarazeni okna podle hwnd do seznamu oken
+            // Removed UnicodeWnd check
+            //--- zarazeni okna podle hwnd do seznamu oken
             if (!WindowsManager.AddWindow(hwnd, wnd)) // chyba
             {
                 TRACE_ET(_T("Unable to create window."));
@@ -395,10 +282,7 @@ CWindow::CWindowProcInt(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
     case WM_DESTROY: // posledni zprava - odpojeni objektu od okna
     {
         wnd = (CWindow*)WindowsManager.GetWindowPtr(hwnd);
-#ifndef _UNICODE
-        if (wnd != NULL && wnd->UnicodeWnd != unicode)
-            TRACE_C("Incompatible windows procedure.");
-#endif // _UNICODE
+        // Removed UnicodeWnd check
         if (wnd != NULL && wnd->Is(otWindow))
         {
             // Petr: posunul jsem dolu pod wnd->WindowProc(), aby behem WM_DESTROY
@@ -412,24 +296,9 @@ CWindow::CWindowProcInt(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 
             // pokud aktualni WndProc je jina nez nase, nebudeme ji menit,
             // protoze nekdo v rade subclasseni uz vratil puvodni WndProc
-#ifdef _UNICODE
-            WNDPROC currentWndProc = (WNDPROC)GetWindowLongPtr(wnd->HWindow, GWLP_WNDPROC);
+            WNDPROC currentWndProc = (WNDPROC)GetWindowLongPtr(wnd->HWindow, GWLP_WNDPROC); // Will resolve to GetWindowLongPtrW
             if (currentWndProc == CWindow::CWindowProc)
-                SetWindowLongPtr(wnd->HWindow, GWLP_WNDPROC, (LONG_PTR)wnd->DefWndProc);
-#else _UNICODE
-            if (wnd->UnicodeWnd) // je-li nase window procedura unicodova, musime pouzit "W" varianty API funkci
-            {
-                WNDPROC currentWndProc = (WNDPROC)GetWindowLongPtrW(wnd->HWindow, GWLP_WNDPROC);
-                if (currentWndProc == CWindow::CWindowProcW || currentWndProc == CWindow::CWindowProc)
-                    SetWindowLongPtrW(wnd->HWindow, GWLP_WNDPROC, (LONG_PTR)wnd->DefWndProc);
-            }
-            else
-            {
-                WNDPROC currentWndProc = (WNDPROC)GetWindowLongPtr(wnd->HWindow, GWLP_WNDPROC);
-                if (currentWndProc == CWindow::CWindowProc || currentWndProc == CWindow::CWindowProcW)
-                    SetWindowLongPtr(wnd->HWindow, GWLP_WNDPROC, (LONG_PTR)wnd->DefWndProc);
-            }
-#endif // _UNICODE
+                SetWindowLongPtr(wnd->HWindow, GWLP_WNDPROC, (LONG_PTR)wnd->DefWndProc); // Will resolve to SetWindowLongPtrW
 
             if (wnd->IsAllocated())
                 delete wnd;
@@ -452,10 +321,7 @@ CWindow::CWindowProcInt(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
             wnd = NULL;
         }
 #endif
-#ifndef _UNICODE
-        if (wnd != NULL && wnd->UnicodeWnd != unicode)
-            TRACE_C("Incompatible windows procedure.");
-#endif // _UNICODE
+        // Removed UnicodeWnd check
     }
     }
     //--- zavolani metody WindowProc(...) prislusneho objektu okna
@@ -464,11 +330,7 @@ CWindow::CWindowProcInt(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
         lResult = wnd->WindowProc(uMsg, wParam, lParam);
     else // chyba nebo message prisla pred WM_CREATE
     {
-#ifndef _UNICODE
-        lResult = unicode ? DefWindowProcW(hwnd, uMsg, wParam, lParam) : DefWindowProcA(hwnd, uMsg, wParam, lParam);
-#else  // _UNICODE
-        lResult = DefWindowProc(hwnd, uMsg, wParam, lParam);
-#endif // _UNICODE
+        lResult = DefWindowProc(hwnd, uMsg, wParam, lParam); // Will resolve to DefWindowProcW
     }
 
     return lResult;
@@ -496,30 +358,7 @@ BOOL CWindow::RegisterUniversalClass()
         ret = RegisterClass(&CWindowClass) != 0;
     }
 
-#ifndef _UNICODE
-    if (ret)
-    {
-        WNDCLASSW CWindowClassW;
-        CWindowClassW.style = CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW;
-        CWindowClassW.lpfnWndProc = CWindow::CWindowProcW;
-        CWindowClassW.cbClsExtra = 0;
-        CWindowClassW.cbWndExtra = 0;
-        CWindowClassW.hInstance = HInstance;
-        CWindowClassW.hIcon = CWindowClass.hIcon;
-        CWindowClassW.hCursor = CWindowClass.hCursor;
-        CWindowClassW.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-        CWindowClassW.lpszMenuName = NULL;
-        CWindowClassW.lpszClassName = CWINDOW_CLASSNAMEW;
-
-        BOOL ret = RegisterClassW(&CWindowClassW) != 0;
-        if (ret)
-        {
-            CWindowClassW.style = CS_DBLCLKS;
-            CWindowClassW.lpszClassName = CWINDOW_CLASSNAME2W;
-            ret = RegisterClassW(&CWindowClassW) != 0;
-        }
-    }
-#endif // _UNICODE
+    // Removed registration of W versions as TCHAR version is now wide.
 
     return ret;
 }
@@ -546,29 +385,7 @@ BOOL CWindow::RegisterUniversalClass(UINT style, int cbClsExtra, int cbWndExtra,
     return RegisterClassEx(&windowClass) != 0;
 }
 
-#ifndef _UNICODE
-BOOL CWindow::RegisterUniversalClassW(UINT style, int cbClsExtra, int cbWndExtra,
-                                      HICON hIcon, HCURSOR hCursor, HBRUSH hbrBackground,
-                                      LPCWSTR lpszMenuName, LPCWSTR lpszClassName,
-                                      HICON hIconSm)
-{
-    WNDCLASSEXW windowClass;
-    windowClass.cbSize = sizeof(WNDCLASSEXW);
-    windowClass.style = style;
-    windowClass.lpfnWndProc = CWindow::CWindowProcW;
-    windowClass.cbClsExtra = cbClsExtra;
-    windowClass.cbWndExtra = cbWndExtra;
-    windowClass.hInstance = HInstance;
-    windowClass.hIcon = hIcon;
-    windowClass.hCursor = hCursor;
-    windowClass.hbrBackground = hbrBackground;
-    windowClass.lpszMenuName = lpszMenuName;
-    windowClass.lpszClassName = lpszClassName;
-    windowClass.hIconSm = hIconSm;
-
-    return RegisterClassExW(&windowClass) != 0;
-}
-#endif // _UNICODE
+// Removed RegisterUniversalClassW implementation
 
 //
 // ****************************************************************************
@@ -606,13 +423,7 @@ INT_PTR
 CDialog::Execute()
 {
     Modal = TRUE;
-#ifndef _UNICODE
-    if (UnicodeWnd)
-    {
-        return DialogBoxParamW(Modul, MAKEINTRESOURCEW(ResID), Parent,
-                               (DLGPROC)CDialog::CDialogProc, (LPARAM)this);
-    }
-#endif // _UNICODE
+    // DialogBoxParam will resolve to DialogBoxParamW due to UNICODE define
     return DialogBoxParam(Modul, MAKEINTRESOURCE(ResID), Parent,
                           (DLGPROC)CDialog::CDialogProc, (LPARAM)this);
 }
@@ -620,13 +431,7 @@ CDialog::Execute()
 HWND CDialog::Create()
 {
     Modal = FALSE;
-#ifndef _UNICODE
-    if (UnicodeWnd)
-    {
-        return CreateDialogParamW(Modul, MAKEINTRESOURCEW(ResID), Parent,
-                                  (DLGPROC)CDialog::CDialogProc, (LPARAM)this);
-    }
-#endif // _UNICODE
+    // CreateDialogParam will resolve to CreateDialogParamW due to UNICODE define
     return CreateDialogParam(Modul, MAKEINTRESOURCE(ResID), Parent,
                              (DLGPROC)CDialog::CDialogProc, (LPARAM)this);
 }
@@ -1055,32 +860,7 @@ void CTransferInfo::EditLine(int ctrlID, TCHAR* buffer, DWORD bufferSizeInChars,
     }
 }
 
-#ifndef _UNICODE
-void CTransferInfo::EditLineW(int ctrlID, WCHAR* buffer, DWORD bufferSizeInChars, BOOL select)
-{
-    HWND HWindow;
-    if (GetControl(HWindow, ctrlID))
-    {
-        switch (Type)
-        {
-        case ttDataToWindow:
-        {
-            SendMessageW(HWindow, EM_LIMITTEXT, bufferSizeInChars - 1, 0);
-            SendMessageW(HWindow, WM_SETTEXT, 0, (LPARAM)buffer);
-            if (select)
-                SendMessageW(HWindow, EM_SETSEL, 0, -1);
-            break;
-        }
-
-        case ttDataFromWindow:
-        {
-            SendMessageW(HWindow, WM_GETTEXT, bufferSizeInChars, (LPARAM)buffer);
-            break;
-        }
-        }
-    }
-}
-#endif // _UNICODE
+// Removed CTransferInfo::EditLineW
 
 void CTransferInfo::EditLine(int ctrlID, double& value, TCHAR* format, BOOL select)
 {

@@ -19,8 +19,8 @@
 // Funkce StrNICmp v C++ na Pentiu Pro beha rychleji nez v ASM varianta.
 //
 
-extern BYTE LowerCase[256]; // premapovani vsech znaku na male; generovano pomoci API CharLower
-extern BYTE UpperCase[256]; // premapovani vsech znaku na velke; generovano pomoci API CharUpper
+extern wchar_t LowerCase[256]; // premapovani vsech znaku na male; generovano pomoci API CharLower
+extern wchar_t UpperCase[256]; // premapovani vsech znaku na velke; generovano pomoci API CharUpper
 
 //*****************************************************************************
 //
@@ -37,7 +37,7 @@ extern BYTE UpperCase[256]; // premapovani vsech znaku na velke; generovano pomo
 //   The StrICpy returns the number of bytes stored in buffer, not counting
 //   the terminating null character.
 //
-int StrICpy(char* dest, const char* src);
+int StrICpy(wchar_t* dest, const wchar_t* src);
 
 //*****************************************************************************
 //
@@ -55,7 +55,7 @@ int StrICpy(char* dest, const char* src);
 //    0 if s1 = s2 (if the strings are equal)
 //   +1 if s1 > s2 (if string pointed to by s1 is greater than the string pointed to by s2)
 //
-int StrICmp(const char* s1, const char* s2);
+int StrICmp(const wchar_t* s1, const wchar_t* s2);
 
 //*****************************************************************************
 //
@@ -78,7 +78,7 @@ int StrICmp(const char* s1, const char* s2);
 //    0 if s1 = s2 (if the substrings are equal)
 //   +1 if s1 > s2 (if substring pointed to by s1 is greater than the substring pointed to by s2)
 //
-int StrICmpEx(const char* s1, int l1, const char* s2, int l2);
+int StrICmpEx(const wchar_t* s1, int l1, const wchar_t* s2, int l2);
 
 //*****************************************************************************
 //
@@ -99,7 +99,7 @@ int StrICmpEx(const char* s1, int l1, const char* s2, int l2);
 //    0 if s1 = s2 (if the substrings are equal)
 //   +1 if s1 > s2 (if substring pointed to by s1 is greater than the substring pointed to by s2)
 //
-int StrCmpEx(const char* s1, int l1, const char* s2, int l2);
+int StrCmpEx(const wchar_t* s1, int l1, const wchar_t* s2, int l2);
 
 //*****************************************************************************
 //
@@ -120,7 +120,7 @@ int StrCmpEx(const char* s1, int l1, const char* s2, int l2);
 //    0 if s1 = s2 (if the substrings are equal)
 //   +1 if s1 > s2 (if substring pointed to by s1 is greater than the substring pointed to by s2)
 //
-int StrNICmp(const char* s1, const char* s2, int n);
+int StrNICmp(const wchar_t* s1, const wchar_t* s2, int n);
 
 //*****************************************************************************
 //
@@ -147,23 +147,23 @@ int MemICmp(const void* buf1, const void* buf2, int n);
 // int StrLen(const char *str);    // pouze 2 x rychlejsi, zbytecne riziko pristupu do nezarovnane pameti
 
 // nakopiruje text do nove naalokovaneho prostoru, NULL = malo pameti
-char* DupStr(const char* txt);
+wchar_t* DupStr(const wchar_t* txt);
 
 // nakopiruje text do nove naalokovaneho prostoru, NULL = malo pameti,
 // navic pri nedostatku pameti nastavi 'err' na TRUE
-char* DupStrEx(const char* str, BOOL& err);
+wchar_t* DupStrEx(const wchar_t* str, BOOL& err);
 
 // vraci prvni vyskyt 'pattern' v 'txt' nebo NULL, je case-insensitive
-const char* StrIStr(const char* txt, const char* pattern);
+const wchar_t* StrIStr(const wchar_t* txt, const wchar_t* pattern);
 
 // vraci prvni vyskyt 'pattern' v 'txt' nebo NULL, je case-insensitive
-const char* StrIStr(const char* txtStart, const char* txtEnd,
-                    const char* patternStart, const char* patternEnd);
+const wchar_t* StrIStr(const wchar_t* txtStart, const wchar_t* txtEnd,
+                    const wchar_t* patternStart, const wchar_t* patternEnd);
 
 // pripoji retezec 'src' za retezec 'dest', ale neprekroci delku 'dstSize'
 // retezec zakoncuje nulou, ktera spada do delky 'dstSize'
 // vraci 'dst'
-char* StrNCat(char* dst, const char* src, int dstSize);
+wchar_t* StrNCat(wchar_t* dst, const wchar_t* src, int dstSize);
 
 // tento historicky kod uz nikdo nepouziva
 /*
@@ -212,25 +212,4 @@ inline int SWPrintFToEnd_s(WCHAR* _Dst, size_t _SizeInWords, const WCHAR* _Forma
 //
 // jedina odlisnost od swprintf_s je, ze zapisuje az za text umisteny v bufferu
 
-template <size_t _Size>
-inline int SPrintFToEnd_s(char (&_Dst)[_Size], const char* _Format, ...)
-{
-    va_list _ArgList;
-    va_start(_ArgList, _Format);
-    int len = strlen(_Dst);
-    return vsprintf_s(_Dst + len, _Size - len, _Format, _ArgList);
-}
-
-inline int SPrintFToEnd_s(char* _Dst, size_t _Size, const char* _Format, ...)
-{
-    va_list _ArgList;
-    va_start(_ArgList, _Format);
-    int len = (int)strlen(_Dst);
-    return vsprintf_s(_Dst + len, _Size - len, _Format, _ArgList);
-}
-
-#ifdef UNICODE
 #define STPrintFToEnd_s SWPrintFToEnd_s
-#else // UNICODE
-#define STPrintFToEnd_s SPrintFToEnd_s
-#endif // UNICODE

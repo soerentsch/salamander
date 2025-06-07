@@ -60,8 +60,8 @@ void Initialize__Str()
 
 #endif //INSIDE_SPL
 
-BYTE LowerCase[256];
-BYTE UpperCase[256];
+wchar_t LowerCase[256];
+wchar_t UpperCase[256];
 
 void InitializeCase();
 
@@ -73,24 +73,24 @@ public:
 
 // ****************************************************************************
 
-char* DupStr(const char* txt)
+wchar_t* DupStr(const wchar_t* txt)
 {
     if (txt == NULL)
         return NULL;
-    int l = (int)strlen(txt);
-    char* s = (char*)malloc(l + 1);
+    int l = (int)wcslen(txt);
+    wchar_t* s = (wchar_t*)malloc((l + 1) * sizeof(wchar_t));
     if (s == NULL)
     {
         TRACE_E("Low memory.");
         return NULL;
     }
-    memcpy(s, txt, l + 1);
+    memcpy(s, txt, (l + 1) * sizeof(wchar_t));
     return s;
 }
 
-char* DupStrEx(const char* str, BOOL& err)
+wchar_t* DupStrEx(const wchar_t* str, BOOL& err)
 {
-    char* s = DupStr(str);
+    wchar_t* s = DupStr(str);
     if (str != NULL && s == NULL)
         err = TRUE;
     return s;
@@ -98,10 +98,10 @@ char* DupStrEx(const char* str, BOOL& err)
 
 // ****************************************************************************
 
-char* StrNCat(char* dst, const char* src, int dstSize)
+wchar_t* StrNCat(wchar_t* dst, const wchar_t* src, int dstSize)
 {
-    int i = lstrlenA(dst);
-    lstrcpynA(dst + i, src, dstSize - i);
+    int i = lstrlenW(dst);
+    lstrcpynW(dst + i, src, dstSize - i);
     return dst;
 }
 
@@ -111,92 +111,56 @@ void InitializeCase()
 {
     int i;
     for (i = 0; i < 256; i++)
-        LowerCase[i] = (char)(UINT_PTR)CharLowerA((LPSTR)(UINT_PTR)i);
+        LowerCase[i] = (wchar_t)(UINT_PTR)CharLowerW((LPWSTR)(UINT_PTR)i);
     for (i = 0; i < 256; i++)
-        UpperCase[i] = (char)(UINT_PTR)CharUpperA((LPSTR)(UINT_PTR)i);
+        UpperCase[i] = (wchar_t)(UINT_PTR)CharUpperW((LPWSTR)(UINT_PTR)i);
 }
 
 //
 //*****************************************************************************
 
-int StrICpy(char* dest, const char* src)
+int StrICpy(wchar_t* dest, const wchar_t* src)
 {
-    const char* s = src;
+    const wchar_t* s = src;
     while (*src != 0)
-        *dest++ = LowerCase[*src++];
+    {
+        // Assuming src contains primarily ASCII-range characters
+        // or characters that have a direct lowercase mapping in the 0-255 range.
+        // For full Unicode, this approach to LowerCase is insufficient.
+        unsigned int char_val = (unsigned int)(*src);
+        if (char_val < 256)
+            *dest++ = LowerCase[char_val];
+        else
+            *dest++ = *src; // Keep non-ASCII range chars as is
+        src++;
+    }
     *dest = 0;
-    return (int)(src - s); // vratime pocet nakopirovanych znaku
+    return (int)(src - s); // return number of characters copied
 }
 
 //
 //*****************************************************************************
 
-#ifdef _WIN64
-// Ani ve VC11 MS nedodali x64 ASM verze stringovych operaci, takze zatim take zustavame v C++
-
-// puvodni funkce
-int StrICmp(const char* s1, const char* s2)
+// No ASM version for wchar_t
+int StrICmp(const wchar_t* s1, const wchar_t* s2)
 {
-    int res;
+    wchar_t c1, c2;
     while (1)
     {
-        res = (unsigned)LowerCase[*s1] - (unsigned)LowerCase[*s2++];
-        if (res != 0)
-            return (res < 0) ? -1 : 1; // < a >
-        if (*s1++ == 0)
-            return 0; // ==
+        unsigned int val1 = (unsigned int)(*s1);
+        unsigned int val2 = (unsigned int)(*s2);
+
+        c1 = (val1 < 256) ? LowerCase[val1] : *s1;
+        c2 = (val2 < 256) ? LowerCase[val2] : *s2;
+
+        if (c1 < c2) return -1;
+        if (c1 > c2) return 1;
+        if (*s1 == 0) return 0; // Both are equal and s1 is null terminator
+
+        s1++;
+        s2++;
     }
 }
-
-#else  // _WIN64
-
-int StrICmp(const char* s1, const char* s2)
-{
-    const BYTE* table = LowerCase;
-    __asm {
-        // load up arguments
-    mov     esi,[s2] // esi = s2
-    mov     edi,[s1] // edi = s1
-    mov     edx,table // edx = LowerCase
-
-    mov     eax,255 // fall into loop
-    xor     ebx,ebx
-
-    align   4
-
-            // compare
-chk_null:
-    or      al,al // not that if al == 0, then eax == 0!
-    jz      short done
-
-    mov     al,[esi] // al = *s2
-    inc     esi
-    mov     bl,[edi] // bl = *s1
-    inc     edi
-
-    cmp     al,bl // first try case-sensitive comparision
-    je      short chk_null // match
-
-    mov     al,[edx + eax] // convert *s2 char to lower case
-    mov     bl,[edx + ebx] // convert *s1 char to lower case
-
-    cmp     bl,al
-    je      chk_null
-                // s1 < s2       s1 > s2
-    sbb     eax,eax // AL=-1, CY=1   AL=0, CY=0
-    sbb     eax,-1          // AL=-1         AL=1
-
-done:
-
-    }
-
-    // navratova hodnota je v eax, abychom obesli warning prekladace
-    // pro funkce bez navratove hodnoty, udelame nasledujici opicarnu
-    BOOL retVal;
-    __asm {mov retVal, eax}
-    return retVal;
-}
-#endif // _WIN64
 
 //
 //*****************************************************************************
@@ -218,267 +182,104 @@ int StrNICmp(const char *s1, const char *s2, int n)
 */
 
 #ifdef _WIN64
-// Ani ve VC11 MS nedodali x64 ASM verze stringovych operaci, takze zatim take zustavame v C++
-
-// opravena verze
-int StrNICmp(const char* s1, const char* s2, int n)
+// C++ wchar_t version of StrNICmp
+int StrNICmp(const wchar_t* s1, const wchar_t* s2, int n)
 {
-    int res;
-    while (n--)
+    wchar_t c1, c2;
+    while (n-- > 0) // Iterate n times or until difference/null terminator
     {
-        res = (unsigned)LowerCase[*s1] - (unsigned)LowerCase[*s2++];
-        if (res != 0)
-            return (res < 0) ? -1 : 1; // < a >
-        if (*s1++ == 0)
-            return 0; // ==
+        unsigned int val1 = (unsigned int)(*s1);
+        unsigned int val2 = (unsigned int)(*s2);
+
+        c1 = (val1 < 256) ? LowerCase[val1] : *s1;
+        c2 = (val2 < 256) ? LowerCase[val2] : *s2;
+
+        if (c1 < c2) return -1;
+        if (c1 > c2) return 1;
+        if (*s1 == 0) return 0; // Both are equal and s1 is null terminator (implies s2 is also null or they would differ)
+
+        s1++;
+        s2++;
     }
-    return 0;
+    return 0; // Compared n characters and all were equal or reached null terminator on both
 }
-
-#else // _WIN64
-
-int StrNICmp(const char* s1, const char* s2, int n)
-{
-    const BYTE* table = LowerCase;
-    __asm {
-        // load up arguments
-    mov     ecx,[n] // ecx = byte count
-    or      ecx,ecx        
-    jz      toend // if count = 0, we are done
-                           
-    mov     esi,s1 // esi = s1
-    mov     edi,s2 // edi = s2
-    mov     edx,table // edx = LowerCase
-                           
-    xor     eax,eax        
-    xor     ebx,ebx        
-                           
-    align   4              
-                           
-lupe:                      
-    mov     al,[esi] // al = *s1
-                           
-    or      eax,eax // see if *s1 is null
-                           
-    mov     bl,[edi] // bl = *s2
-                           
-    jz      short eject // jump if *s1 is null
-
-    or      ebx,ebx // see if *s2 is null
-    jz      short eject // jump if so
-
-    inc     esi
-    inc     edi
-
-    mov     al,[edx + eax] // convert *s1 char to lower case
-    mov     bl,[edx + ebx] // convert *s2 char to lower case
-
-    cmp     eax,ebx // now equal?
-    jne     short differ
-
-    dec     ecx
-    jnz     short lupe
-
-eject:
-    xor     ecx,ecx
-    cmp     eax,ebx
-    je      short toend
-
-differ:
-    mov     ecx,-1 // return -1 if s1 < s2
-    jb      short toend
-
-    neg     ecx // return 1
-
-toend:
-    mov     eax,ecx // move return value to eax
-    }
-    // navratova hodnota je v eax, abychom obesli warning prekladace
-    // pro funkce bez navratove hodnoty, udelame nasledujici opicarnu
-    BOOL retVal;
-    __asm {mov retVal, eax}
-    return retVal;
-}
-
-#endif // _WIN64
 
 //
 //*****************************************************************************
 
-#ifdef _WIN64
-// Ani ve VC11 MS nedodali x64 ASM verze stringovych operaci, takze zatim take zustavame v C++
+// C++ wchar_t version of MemICmp. Compares 'n' characters.
 int MemICmp(const void* buf1, const void* buf2, int n)
 {
-    int ret = _memicmp(buf1, buf2, n);
-    // normalizujeme navratovou hodnotu dle nasi specifikace
-    if (ret == 0)
-        return 0;
-    return (ret < 0) ? -1 : 1;
-}
-#else  // _WIN64
+    const wchar_t* b1 = (const wchar_t*)buf1;
+    const wchar_t* b2 = (const wchar_t*)buf2;
+    wchar_t c1, c2;
 
-int MemICmp(const void* buf1, const void* buf2, int n)
-{
-    const BYTE* table = LowerCase;
-    __asm {
-        // load up arguments
-    mov     ecx,[n] // ecx = byte count
-    or      ecx,ecx        
-    jz      toend // if count = 0, we are done
-                           
-    mov     esi,buf1 // esi = buf1
-    mov     edi,buf2 // edi = buf2
-    mov     edx,table // edx = LowerCase
-                           
-    xor     eax,eax        
-    xor     ebx,ebx        
-                           
-    align   4              
-                           
-lupe:                      
-    mov     al,[esi] // al = *buf1
-    inc     esi
-    mov     bl,[edi] // bl = *buf2
-    inc     edi
-
-    cmp     al,bl // test for equality BEFORE converting case
-    je      short dolupe
-
-    mov     al,[edx + eax] // convert *buf1 char to lower case
-    mov     bl,[edx + ebx] // convert *buf2 char to lower case
-
-    cmp     al,bl // now equal?
-    jne     short differ
-
-dolupe:
-    dec     ecx
-    jnz     lupe
-
-    jmp     short toend
-
-differ:
-    mov     ecx,-1 // return -1 if buf1 < buf2
-    jb      short toend
-
-    neg     ecx // return 1
-
-toend:
-    mov     eax,ecx // move return value to eax
-    }
-    // navratova hodnota je v eax, abychom obesli warning prekladace
-    // pro funkce bez navratove hodnoty, udelame nasledujici opicarnu
-    BOOL retVal;
-    __asm {mov retVal, eax}
-    return retVal;
-}
-#endif // _WIN64
-
-//
-//*****************************************************************************
-
-#ifdef _WIN64
-// Ani ve VC11 MS nedodali x64 ASM verze stringovych operaci, takze zatim take zustavame v C++
-
-// puvodni funkce
-int StrICmpEx(const char* s1, int l1, const char* s2, int l2)
-{
-    int res, l = (l1 < l2) ? l1 : l2;
-    while (l--)
+    while (n-- > 0)
     {
-        res = (unsigned)LowerCase[*s1++] - (unsigned)LowerCase[*s2++];
-        if (res != 0)
-            return (res < 0) ? -1 : 1; // < a >
-    }
-    if (l1 != l2)
-        return (l1 < l2) ? -1 : 1; // < a >
-    else
-        return 0;
-}
+        unsigned int val1 = (unsigned int)(*b1);
+        unsigned int val2 = (unsigned int)(*b2);
 
-/*
-// princip asm funkce
-int StrICmpEx(const char *s1, int l1, const char *s2, int l2)
-{
-  int l = (l1 < l2) ? l1 : l2;
+        c1 = (val1 < 256) ? LowerCase[val1] : *b1;
+        c2 = (val2 < 256) ? LowerCase[val2] : *b2;
 
-  if (l > 0)
-  {
-    int res = MemICmp(s1, s2, l);
-    if (res != 0) return (res < 0) ? -1 : 1;    // < a >
-  }
+        if (c1 < c2) return -1;
+        if (c1 > c2) return 1;
 
-  if (l1 != l2) return (l1 < l2) ? -1 : 1;
-  else return 0;
-}
-*/
-#else  // _WIN64
-
-int StrICmpEx(const char* s1, int l1, const char* s2, int l2)
-{
-    int l = (l1 < l2) ? l1 : l2;
-
-    if (l > 0)
-    {
-        // MemICmp
-        const BYTE* table = LowerCase;
-        __asm {
-            // load up arguments
-      mov     ecx,[l] // ecx = byte count
-      or      ecx,ecx        
-      jz      toend // if count = 0, we are done
-                           
-      mov     esi,s1 // esi = buf1
-      mov     edi,s2 // edi = buf2
-      mov     edx,table // edx = LowerCase
-                           
-      xor     eax,eax        
-      xor     ebx,ebx        
-                           
-      align   4              
-                           
-  lupe:                      
-      mov     al,[esi] // al = *buf1
-      inc     esi
-      mov     bl,[edi] // bl = *buf2
-      inc     edi
-
-      cmp     al,bl // test for equality BEFORE converting case
-      je      short dolupe
-
-      mov     al,[edx + eax] // convert *buf1 char to lower case
-      mov     bl,[edx + ebx] // convert *buf2 char to lower case
-
-      cmp     al,bl // now equal?
-      jne     short differ
-
-  dolupe:
-      dec     ecx
-      jnz     lupe
-
-      jmp     short toend
-
-  differ:
-      mov     ecx,-1 // return -1 if buf1 < buf2
-      jb      short toend
-
-      neg     ecx // return 1
-
-  toend:
-      mov     eax,ecx // move return value to eax
+        // If characters are equal, continue.
+        // MemICmp compares exactly n characters.
+        // If one buffer ends with NUL, it will be compared against
+        // subsequent characters of the other buffer (or NULs).
+        // If both are NUL, they are equal for this character.
+        if (*b1 == 0 && *b2 == 0 && n > 0) // if both are null and we are not done, they are equal for this char
+        {
+            // but if we are expected to compare more chars, and they are both NULL this means they are equal so far
+            // effectively, this check isn't strictly needed as comparison of c1 and c2 handles it.
+            // if *b1 is NUL, c1 will be NUL (or LowerCase[0]).
+            // if *b1 and *b2 are both NUL, c1 and c2 will be equal.
         }
-        // navratova hodnota je v eax, abychom obesli warning prekladace
-        // pro funkce bez navratove hodnoty, udelame nasledujici opicarnu
-        BOOL retVal;
-        __asm {mov retVal, eax}
-        if (retVal != 0) return retVal;
+
+
+        b1++;
+        b2++;
+    }
+    return 0; // Compared n characters and all were equal.
+}
+
+//
+//*****************************************************************************
+
+// C++ wchar_t version of StrICmpEx
+int StrICmpEx(const wchar_t* s1, int l1, const wchar_t* s2, int l2)
+{
+    int l = (l1 < l2) ? l1 : l2; // Determine shorter length for comparison
+    wchar_t c1, c2;
+
+    const wchar_t* s1_end = s1 + l; // End pointer for the common length part
+
+    while (s1 < s1_end) // Compare up to the shorter length
+    {
+        unsigned int val1 = (unsigned int)(*s1);
+        unsigned int val2 = (unsigned int)(*s2);
+
+        c1 = (val1 < 256) ? LowerCase[val1] : *s1;
+        c2 = (val2 < 256) ? LowerCase[val2] : *s2;
+
+        if (c1 < c2) return -1;
+        if (c1 > c2) return 1;
+
+        // Optimization: if *s1 is NUL, and they were equal, s2 must also be NUL.
+        // In this case, if we haven't returned, they are equal up to this NUL.
+        // The loop will terminate, and l1 vs l2 will decide.
+        if (*s1 == 0) break;
+
+        s1++;
+        s2++;
     }
 
-    if (l1 != l2)
-        return (l1 < l2) ? -1 : 1;
-    else
-        return 0;
+    // If we've compared 'l' characters and found no difference
+    if (l1 == l2) return 0; // If lengths are equal, strings are equal
+    return (l1 < l2) ? -1 : 1; // Otherwise, the shorter string is "less"
 }
-#endif // _WIN64
 
 //
 //*****************************************************************************
@@ -498,38 +299,40 @@ int StrCmpEx(const char *s1, int l1, const char *s2, int l2)
 }
 */
 
-// rychlejsi varianta
-int StrCmpEx(const char* s1, int l1, const char* s2, int l2)
+// wchar_t varianta
+int StrCmpEx(const wchar_t* s1, int l1, const wchar_t* s2, int l2)
 {
-    int l = (l1 < l2) ? l1 : l2;
+    int l = (l1 < l2) ? l1 : l2; // Determine shorter length for comparison
 
-    if (l > 0)
+    const wchar_t* s1_end = s1 + l;
+
+    while (s1 < s1_end) // Compare up to the shorter length
     {
-        int res = memcmp(s1, s2, l);
-        if (res != 0)
-            return (res < 0) ? -1 : 1; // < a >
+        if (*s1 < *s2) return -1;
+        if (*s1 > *s2) return 1;
+        if (*s1 == 0) break; // Optimization similar to StrICmpEx
+        s1++;
+        s2++;
     }
 
-    if (l1 != l2)
-        return (l1 < l2) ? -1 : 1; // < a >
-    else
-        return 0;
+    if (l1 == l2) return 0;
+    return (l1 < l2) ? -1 : 1;
 }
 
 //
 //*****************************************************************************
 
-const char* StrIStr(const char* txt, const char* pattern)
+const wchar_t* StrIStr(const wchar_t* txt, const wchar_t* pattern)
 {
     if (txt == NULL || pattern == NULL)
         return NULL;
 
-    const char* s = txt;
-    int len = (int)strlen(pattern);
-    int txtLen = (int)strlen(txt);
+    const wchar_t* s = txt;
+    int len = (int)wcslen(pattern);
+    int txtLen = (int)wcslen(txt);
     while (txtLen >= len)
     {
-        if (StrNICmp(s, pattern, len) == 0)
+        if (StrNICmp(s, pattern, len) == 0) // Uses updated StrNICmp (wchar_t)
             return s;
         s++;
         txtLen--;
@@ -537,21 +340,24 @@ const char* StrIStr(const char* txt, const char* pattern)
     return NULL;
 }
 
-const char* StrIStr(const char* txtStart, const char* txtEnd,
-                    const char* patternStart, const char* patternEnd)
+const wchar_t* StrIStr(const wchar_t* txtStart, const wchar_t* txtEnd,
+                       const wchar_t* patternStart, const wchar_t* patternEnd)
 {
     if (txtStart == NULL || patternStart == NULL)
         return NULL;
 
-    const char* s = txtStart;
+    const wchar_t* s = txtStart;
     int len = (int)(patternEnd - patternStart);
     int txtLen = (int)(txtEnd - txtStart);
+
+    if (len == 0) return txtStart; // Empty pattern matches at the beginning
+    if (len < 0 || txtLen < 0) return NULL; // Invalid lengths
+
     while (txtLen >= len)
     {
-        if (StrNICmp(s, patternStart, len) == 0)
+        if (StrNICmp(s, patternStart, len) == 0) // Uses updated StrNICmp (wchar_t)
             return s;
         s++;
-        txtLen--;
     }
     return NULL;
 }

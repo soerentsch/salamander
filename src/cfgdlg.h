@@ -12,7 +12,7 @@ class CColorArrowButton;
 
 struct CHighlightMasksItem
 {
-    CMaskGroup* Masks;
+    CMaskGroup* Masks; // CMaskGroup will be made Unicode-aware later
     DWORD Attr;      // 1:include; 0:exclude
     DWORD ValidAttr; // bity v Attr, ktere jsou platne = 1; pokud na nich nezalezi = 0
 
@@ -31,7 +31,7 @@ struct CHighlightMasksItem
     CHighlightMasksItem(CHighlightMasksItem& item);
     ~CHighlightMasksItem();
 
-    BOOL Set(const char* masks);
+    BOOL Set(const wchar_t* masks);
     BOOL IsGood();
 };
 
@@ -50,7 +50,7 @@ public:
 
     // prohleda vsechny masky, pokud najde odpovidajici polozku, vrati na ni ukazatel
     // jinak vrati NULL; 'fileExt' je u adresaru NULL (pripona se musi dohledat)
-    inline CHighlightMasksItem* AgreeMasks(const char* fileName, const char* fileExt, DWORD fileAttr)
+    inline CHighlightMasksItem* AgreeMasks(const wchar_t* fileName, const wchar_t* fileExt, DWORD fileAttr)
     {
         int i;
         for (i = 0; i < Count; i++)
@@ -74,8 +74,8 @@ public:
 
 struct CViewerMasksItem
 {
-    CMaskGroup* Masks;
-    char *Command,
+    CMaskGroup* Masks; // CMaskGroup will be made Unicode-aware later
+    wchar_t *Command,
         *Arguments,
         *InitDir;
 
@@ -87,14 +87,14 @@ struct CViewerMasksItem
     // pomocna promenna pro zjisteni typu udaju - TRUE = stare -> 'Type' (0 viewer, 1 IE viewer, 2 external)
     BOOL OldType;
 
-    CViewerMasksItem(const char* masks, const char* command, const char* arguments, const char* initDir,
+    CViewerMasksItem(const wchar_t* masks, const wchar_t* command, const wchar_t* arguments, const wchar_t* initDir,
                      int viewerType, BOOL oldType);
 
     CViewerMasksItem();
     CViewerMasksItem(CViewerMasksItem& item);
     ~CViewerMasksItem();
 
-    BOOL Set(const char* masks, const char* command, const char* arguments, const char* initDir);
+    BOOL Set(const wchar_t* masks, const wchar_t* command, const wchar_t* arguments, const wchar_t* initDir);
     BOOL IsGood();
 };
 
@@ -119,20 +119,20 @@ public:
 
 struct CEditorMasksItem
 {
-    CMaskGroup* Masks;
-    char *Command,
+    CMaskGroup* Masks; // CMaskGroup will be made Unicode-aware later
+    wchar_t *Command,
         *Arguments,
         *InitDir;
 
     DWORD HandlerID; // unikatni ID (v ramci spusteni Salamandera)
                      // slouzi pro identifikaci editoru pri vyberu z historie souboru CFileHistory
 
-    CEditorMasksItem(char* masks, char* command, char* arguments, char* initDir);
+    CEditorMasksItem(const wchar_t* masks, const wchar_t* command, const wchar_t* arguments, const wchar_t* initDir);
     CEditorMasksItem();
     CEditorMasksItem(CEditorMasksItem& item);
     ~CEditorMasksItem();
 
-    BOOL Set(const char* masks, const char* command, const char* arguments, const char* initDir);
+    BOOL Set(const wchar_t* masks, const wchar_t* command, const wchar_t* arguments, const wchar_t* initDir);
     BOOL IsGood();
 };
 
@@ -276,11 +276,11 @@ struct CConfiguration
     int CompareMoreOptions;  // je dialog zobrazen v rozsirenem stavu?
     int CompareIgnoreFiles;  // maji se ignorovat specifikovane nazvy souboru?
     int CompareIgnoreDirs;   // maji se ignorovat specifikovane nazvy adresaru?
-    CMaskGroup CompareIgnoreFilesMasks;
-    CMaskGroup CompareIgnoreDirsMasks;
+    CMaskGroup CompareIgnoreFilesMasks; // CMaskGroup will be made Unicode-aware later
+    CMaskGroup CompareIgnoreDirsMasks;  // CMaskGroup will be made Unicode-aware later
 
     BOOL IfPathIsInaccessibleGoToIsMyDocs;   // TRUE = nepouzivat IfPathIsInaccessibleGoTo, tahat ze systemu rovnou Documents
-    char IfPathIsInaccessibleGoTo[MAX_PATH]; // cesta na kterou jdeme pokud nelze zustat na aktualni ceste v panelu (vypadek sitove cesty, vyndani media z removable drivu, atd.)
+    wchar_t IfPathIsInaccessibleGoTo[MAX_PATH]; // cesta na kterou jdeme pokud nelze zustat na aktualni ceste v panelu (vypadek sitove cesty, vyndani media z removable drivu, atd.)
 
     DWORD LastUsedSpeedLimit; // pamet na posledni pouzity speed-limit (useri obvykle zadavaji kolem dokola jedno cislo)
 
@@ -293,7 +293,7 @@ struct CConfiguration
     int ShowPanelCaption; // bude v directory line zobrazen barevne panel caption?
     int ShowPanelZoom;    // bude v directory line zobrazeno tlacitko Zoom?
 
-    char InfoLineContent[200];
+    wchar_t InfoLineContent[200]; // Note: This was char[200], assuming it might need to be wchar_t for general content.
 
     int FileNameFormat; // jak upravit filename po nacteni z disku
 
@@ -310,30 +310,30 @@ struct CConfiguration
 
     int HotPathAutoConfig; // automaticky otevre konfig po prirazeni z panelu
 
-    char TopToolBar[400]; // obsah ToolBar
-    char MiddleToolBar[400];
-    char LeftToolBar[200];
-    char RightToolBar[200];
+    wchar_t TopToolBar[400]; // obsah ToolBar
+    wchar_t MiddleToolBar[400];
+    wchar_t LeftToolBar[200];
+    wchar_t RightToolBar[200];
 
     int UseRecycleBin;       // 0 - do not use, 1 - for all, 2 - pro RecycleMasks
-    CMaskGroup RecycleMasks; // pole masek pro rozliseni toho, co posilat do kose
+    CMaskGroup RecycleMasks; // CMaskGroup will be made Unicode-aware later, pole masek pro rozliseni toho, co posilat do kose
 
     // na co se citi chudak uzivatel -- budeme redukovat menu
     BOOL SkillLevel; // SKILL_LEVEL_BEGINNER, SKILL_LEVEL_INTERMEDIATE, SKILL_LEVEL_ADVANCED
 
     // destrukce historii je zajistena v metode ClearHistory()
-    char* SelectHistory[SELECT_HISTORY_SIZE];
-    char* CopyHistory[COPY_HISTORY_SIZE];
-    char* EditHistory[EDIT_HISTORY_SIZE];
-    char* ChangeDirHistory[CHANGEDIR_HISTORY_SIZE];
-    char* FileListHistory[FILELIST_HISTORY_SIZE];
-    char* CreateDirHistory[CREATEDIR_HISTORY_SIZE];
-    char* QuickRenameHistory[QUICKRENAME_HISTORY_SIZE];
-    char* EditNewHistory[EDITNEW_HISTORY_SIZE];
-    char* ConvertHistory[CONVERT_HISTORY_SIZE];
-    char* FilterHistory[FILTER_HISTORY_SIZE];
+    wchar_t* SelectHistory[SELECT_HISTORY_SIZE];
+    wchar_t* CopyHistory[COPY_HISTORY_SIZE];
+    wchar_t* EditHistory[EDIT_HISTORY_SIZE];
+    wchar_t* ChangeDirHistory[CHANGEDIR_HISTORY_SIZE];
+    wchar_t* FileListHistory[FILELIST_HISTORY_SIZE];
+    wchar_t* CreateDirHistory[CREATEDIR_HISTORY_SIZE];
+    wchar_t* QuickRenameHistory[QUICKRENAME_HISTORY_SIZE];
+    wchar_t* EditNewHistory[EDITNEW_HISTORY_SIZE];
+    wchar_t* ConvertHistory[CONVERT_HISTORY_SIZE];
+    wchar_t* FilterHistory[FILTER_HISTORY_SIZE];
 
-    char FileListName[MAX_PATH]; // file name
+    wchar_t FileListName[MAX_PATH]; // file name
     BOOL FileListAppend;
     int FileListDestination; // 0=Clipboard 1=Viewer 2=File
 
@@ -349,15 +349,15 @@ struct CConfiguration
         TabSize,      // velikost (pocet mezer) tabelatoru
         SavePosition; // ukladat pozici okna/umistit dle hlavniho okna
 
-    CMaskGroup TextModeMasks; // pole masek pro soubory zobrazovane vzdy v textovem rezimu
-    CMaskGroup HexModeMasks;  // pole masek pro soubory zobrazovane vzdy v hexa rezimu
+    CMaskGroup TextModeMasks; // CMaskGroup will be made Unicode-aware later
+    CMaskGroup HexModeMasks;  // CMaskGroup will be made Unicode-aware later
 
     WINDOWPLACEMENT WindowPlacement; // neplatne, pokud SavePosition != TRUE
 
     BOOL WrapText; // wrapovani textu, nastavuje se z menu (zde jen kvuli ukladani)
 
     BOOL CodePageAutoSelect;  // automaticky rozpoznat kodovou stranku
-    char DefaultConvert[200]; // nazev kodovani, ktery chce user defaultne pouzivat
+    wchar_t DefaultConvert[200]; // nazev kodovani, ktery chce user defaultne pouzivat
 
     BOOL AutoCopySelection; // automaticky kopirovat selection na clipboard
 
@@ -398,7 +398,7 @@ struct CConfiguration
     int UseSimpleIconsInArchives;
 
     BOOL UseEditNewFileDefault;        // ma se pouzivat EditNewFileDefault? (pokud ne, nacita se z resourcu, takze chodi prepinani jazyku)
-    char EditNewFileDefault[MAX_PATH]; // pouziva se v EditNewFile prikazu jako default, pokud je zapnuto UseEditNewFileDefault
+    wchar_t EditNewFileDefault[MAX_PATH]; // pouziva se v EditNewFile prikazu jako default, pokud je zapnuto UseEditNewFileDefault
 
     // Tip of the Day
     //  int  ShowTipOfTheDay;         // zobrazovat pri spusteni programu Tip dne
@@ -413,7 +413,7 @@ struct CConfiguration
 
     // custom icon overlays
     BOOL EnableCustomIconOverlays;    // TRUE = pouzivame icon overlays (viz ShellIconOverlays)
-    char* DisabledCustomIconOverlays; // alokovany seznam zakazanych icon overlay handleru (oddelovac je ';', escape-sekvence pro ';' je ";;")
+    wchar_t* DisabledCustomIconOverlays; // alokovany seznam zakazanych icon overlay handleru (oddelovac je ';', escape-sekvence pro ';' je ";;")
 
 #ifndef _WIN64
     // FIXME_X64_WINSCP - tohle reseni neni OK, vykoumat lepsi (oddelit x86 a x64 verze + udelat shared data)
@@ -428,7 +428,7 @@ struct CConfiguration
     int GetMainWindowIconIndex(); // vrati validni index do pole MainWindowIcons
 
     BOOL PrepareRecycleMasks(int& errorPos); // pripravi pro pouziti recycle-bin masky
-    BOOL AgreeRecycleMasks(const char* fileName, const char* fileExt);
+    BOOL AgreeRecycleMasks(const wchar_t* fileName, const wchar_t* fileExt);
 
     DWORD LastFocusedPage;          // posledni navstivena stranka v dlg
     DWORD ConfigurationHeight;      // vyska konfiguracniho dialogu v bodech
@@ -441,22 +441,22 @@ struct CConfiguration
     int FindColNameWidth; // sirka sloupcu Name ve Find dialogu
 
     // Language
-    char LoadedSLGName[MAX_PATH];    // xxxxx.slg, ktere se naloadilo pri startu Salamandera
-    char SLGName[MAX_PATH];          // xxxxx.slg, ktere se priste pouzije pri startu Salamandera
+    wchar_t LoadedSLGName[MAX_PATH];    // xxxxx.slg, ktere se naloadilo pri startu Salamandera
+    wchar_t SLGName[MAX_PATH];          // xxxxx.slg, ktere se priste pouzije pri startu Salamandera
     int DoNotDispCantLoadPluginSLG;  // TRUE = nezobrazovat warning o tom, ze neni mozne loadnout stejne pojmenovane SLG do pluginu jako do Salama
     int DoNotDispCantLoadPluginSLG2; // TRUE = nezobrazovat warning o tom, ze neni mozne loadnout SLG pluginu, ktere se pouzivalo posledne (user si ho vybral nebo bylo vybrano automaticky)
     int UseAsAltSLGInOtherPlugins;   // TRUE = zkusit pouzit AltSLGName pro pluginy
-    char AltPluginSLGName[MAX_PATH]; // jen pokud je AltPluginSLGName TRUE: nahradni SLG modul pro pluginy (pro pripad, ze LoadedSLGName pro plugin neexistuje)
+    wchar_t AltPluginSLGName[MAX_PATH]; // jen pokud je AltPluginSLGName TRUE: nahradni SLG modul pro pluginy (pro pripad, ze LoadedSLGName pro plugin neexistuje)
 
     // Nazev adresare convert\\XXX\\convert.cfg, ze ktereho se nacita convert.cfg
-    char ConversionTable[MAX_PATH];
+    wchar_t ConversionTable[MAX_PATH];
 
     int TitleBarShowPath;                        // budeme v titulku zobrazovat cestu?
     int TitleBarMode;                            // rezim zobrazeni title bar (TITLE_BAR_MODE_xxx)
     int UseTitleBarPrefix;                       // zobrazovat prefix v title bar?
-    char TitleBarPrefix[TITLE_PREFIX_MAX];       // prefix pro title bar
+    wchar_t TitleBarPrefix[TITLE_PREFIX_MAX];       // prefix pro title bar
     int UseTitleBarPrefixForced;                 // cmdline varianta, ma prednost a neuklada se
-    char TitleBarPrefixForced[TITLE_PREFIX_MAX]; // cmdline varianta, ma prednost a neuklada se
+    wchar_t TitleBarPrefixForced[TITLE_PREFIX_MAX]; // cmdline varianta, ma prednost a neuklada se
     int MainWindowIconIndex;                     // index ikonky v poli MainWindowIcons[], 0=default
     int MainWindowIconIndexForced;               // cmdline varianta, ma prednost a neuklada se; -1 -- nenastaveno
 
@@ -1205,6 +1205,6 @@ protected:
 //
 // ****************************************************************************
 
-BOOL ValidatePathIsNotEmpty(HWND hParent, const char* path);
+BOOL ValidatePathIsNotEmpty(HWND hParent, const wchar_t* path);
 
 extern CConfiguration Configuration;

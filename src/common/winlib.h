@@ -22,10 +22,7 @@ extern HINSTANCE HInstance;
 extern const TCHAR* CWINDOW_CLASSNAME;  // jmeno tridy universalniho okna
 extern const TCHAR* CWINDOW_CLASSNAME2; // jmeno tridy universalniho okna - nema CS_VREDRAW | CS_HREDRAW
 
-#ifndef _UNICODE
-extern const WCHAR* CWINDOW_CLASSNAMEW;  // jmeno tridy unicodoveho universalniho okna
-extern const WCHAR* CWINDOW_CLASSNAME2W; // jmeno tridy unicodoveho universalniho okna - nema CS_VREDRAW | CS_HREDRAW
-#endif                                   // _UNICODE
+// Removed CWINDOW_CLASSNAMEW and CWINDOW_CLASSNAME2W as TCHAR versions will be wide.
 
 class CWinLibHelp;
 
@@ -72,33 +69,17 @@ public:
     HWND HWindow;
     UINT HelpID; // -1 = empty value (do not use help)
 
-    CWindowsObject(CObjectOrigin origin
-#ifndef _UNICODE
-                   ,
-                   BOOL unicodeWnd
-#endif // _UNICODE
-    )
+    CWindowsObject(CObjectOrigin origin)
     {
         HWindow = NULL;
         ObjectOrigin = origin;
-#ifndef _UNICODE
-        UnicodeWnd = unicodeWnd;
-#endif // _UNICODE
         HelpID = -1;
     }
 
-    CWindowsObject(UINT helpID, CObjectOrigin origin
-#ifndef _UNICODE
-                   ,
-                   BOOL unicodeWnd
-#endif // _UNICODE
-    )
+    CWindowsObject(UINT helpID, CObjectOrigin origin)
     {
         HWindow = NULL;
         ObjectOrigin = origin;
-#ifndef _UNICODE
-        UnicodeWnd = unicodeWnd;
-#endif // _UNICODE
         SetHelpID(helpID);
     }
 
@@ -120,11 +101,7 @@ public:
 
 protected:
     CObjectOrigin ObjectOrigin;
-#ifndef _UNICODE
-    // okna: create: TRUE = okno je unicodove, jinak je ANSI; attach: TRUE = nase window procedura
-    // je unicodova, jinak je ANSI; dialogy: TRUE = dialog je unicodovy, jinak je ANSI
-    BOOL UnicodeWnd;
-#endif // _UNICODE
+    // Removed UnicodeWnd member
 };
 
 // ****************************************************************************
@@ -132,34 +109,19 @@ protected:
 class CWindow : public CWindowsObject
 {
 public:
-#ifdef _UNICODE
     CWindow(CObjectOrigin origin = ooAllocated) : CWindowsObject(origin)
-#else  // _UNICODE
-    CWindow(CObjectOrigin origin = ooAllocated,
-            BOOL unicodeWnd = FALSE) : CWindowsObject(origin, unicodeWnd)
-#endif // _UNICODE
     {
         DefWndProc = GetDefWindowProc();
     }
 
-#ifdef _UNICODE
     CWindow(HWND hDlg, int ctrlID, CObjectOrigin origin = ooAllocated) : CWindowsObject(origin)
-#else  // _UNICODE
-    CWindow(HWND hDlg, int ctrlID, CObjectOrigin origin = ooAllocated,
-            BOOL unicodeWnd = FALSE) : CWindowsObject(origin, unicodeWnd)
-#endif // _UNICODE
     {
         DefWndProc = GetDefWindowProc();
         AttachToControl(hDlg, ctrlID);
     }
 
-#ifdef _UNICODE
     CWindow(HWND hDlg, int ctrlID, UINT helpID,
             CObjectOrigin origin = ooAllocated) : CWindowsObject(helpID, origin)
-#else  // _UNICODE
-    CWindow(HWND hDlg, int ctrlID, UINT helpID, CObjectOrigin origin = ooAllocated,
-            BOOL unicodeWnd = FALSE) : CWindowsObject(helpID, origin, unicodeWnd)
-#endif // _UNICODE
     {
         DefWndProc = GetDefWindowProc();
         AttachToControl(hDlg, ctrlID);
@@ -179,17 +141,7 @@ public:
                                        LPCTSTR lpszClassName,
                                        HICON hIconSm);
 
-#ifndef _UNICODE
-    static BOOL RegisterUniversalClassW(UINT style,
-                                        int cbClsExtra,
-                                        int cbWndExtra,
-                                        HICON hIcon,
-                                        HCURSOR hCursor,
-                                        HBRUSH hbrBackground,
-                                        LPCWSTR lpszMenuName,
-                                        LPCWSTR lpszClassName,
-                                        HICON hIconSm);
-#endif // _UNICODE
+    // Removed RegisterUniversalClassW
 
     HWND Create(LPCTSTR lpszClassName,  // address of registered class name
                 LPCTSTR lpszWindowName, // address of window name
@@ -216,32 +168,7 @@ public:
                   HINSTANCE hinst,        // handle of application instance
                   LPVOID lpvParam);       // ukazatel na objekt vytvareneho okna
 
-#ifndef _UNICODE
-    HWND CreateW(LPCWSTR lpszClassName,  // address of registered class name
-                 LPCWSTR lpszWindowName, // address of window name
-                 DWORD dwStyle,          // window style
-                 int x,                  // horizontal position of window
-                 int y,                  // vertical position of window
-                 int nWidth,             // window width
-                 int nHeight,            // window height
-                 HWND hwndParent,        // handle of parent or owner window
-                 HMENU hmenu,            // handle of menu or child-window identifier
-                 HINSTANCE hinst,        // handle of application instance
-                 LPVOID lpvParam);       // ukazatel na objekt vytvareneho okna
-
-    HWND CreateExW(DWORD dwExStyle,        // extended window style
-                   LPCWSTR lpszClassName,  // address of registered class name
-                   LPCWSTR lpszWindowName, // address of window name
-                   DWORD dwStyle,          // window style
-                   int x,                  // horizontal position of window
-                   int y,                  // vertical position of window
-                   int nWidth,             // window width
-                   int nHeight,            // window height
-                   HWND hwndParent,        // handle of parent or owner window
-                   HMENU hmenu,            // handle of menu or child-window identifier
-                   HINSTANCE hinst,        // handle of application instance
-                   LPVOID lpvParam);       // ukazatel na objekt vytvareneho okna
-#endif                                     // _UNICODE
+    // Removed CreateW and CreateExW
 
     void AttachToWindow(HWND hWnd);
     void AttachToControl(HWND dlg, int ctrlID);
@@ -249,24 +176,16 @@ public:
 
     static LRESULT CALLBACK CWindowProc(HWND hwnd, UINT uMsg,
                                         WPARAM wParam, LPARAM lParam);
-#ifndef _UNICODE
-    static LRESULT CALLBACK CWindowProcW(HWND hwnd, UINT uMsg,
-                                         WPARAM wParam, LPARAM lParam);
-#endif // _UNICODE
+    // Removed CWindowProcW
 
 protected:
     virtual LRESULT WindowProc(UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-#ifndef _UNICODE
-    static LRESULT CALLBACK CWindowProcInt(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL unicode);
-#endif // _UNICODE
+    // Removed CWindowProcInt
 
     WNDPROC GetDefWindowProc()
     {
-#ifndef _UNICODE
-        if (UnicodeWnd)
-            return DefWindowProcW;
-#endif // _UNICODE
+        // Always use DefWindowProc (which will be the Unicode one)
         return DefWindowProc;
     }
 
@@ -310,9 +229,7 @@ public:
     void CheckBox(int ctrlID, int& value); // 0-unchecked, 1-checked, 2-grayed
     void TrackBar(int ctrlID, int& value);
 
-#ifndef _UNICODE
-    void EditLineW(int ctrlID, WCHAR* buffer, DWORD bufferSizeInChars, BOOL select = TRUE);
-#endif // _UNICODE
+    // Removed EditLineW
 
 protected:
     HWND HDialog; // handle dialogu, pro ktery se provadi transfer
@@ -326,12 +243,7 @@ public:
     CWindowsObject::SetObjectOrigin; // kvuli zkompilovatelnosti CPropSheetPage
     CWindowsObject::HWindow;         // kvuli zkompilovatelnosti CPropSheetPage
 
-#ifdef _UNICODE
     CDialog(HINSTANCE modul, int resID, HWND parent, CObjectOrigin origin = ooStandard) : CWindowsObject(origin)
-#else  // _UNICODE
-    CDialog(HINSTANCE modul, int resID, HWND parent, CObjectOrigin origin = ooStandard,
-            BOOL unicodeWnd = FALSE) : CWindowsObject(origin, unicodeWnd)
-#endif // _UNICODE
     {
         Modal = 0;
         Modul = modul;
@@ -339,13 +251,8 @@ public:
         Parent = parent;
     }
 
-#ifdef _UNICODE
     CDialog(HINSTANCE modul, int resID, UINT helpID, HWND parent,
             CObjectOrigin origin = ooStandard) : CWindowsObject(helpID, origin)
-#else  // _UNICODE
-    CDialog(HINSTANCE modul, int resID, UINT helpID, HWND parent, CObjectOrigin origin = ooStandard,
-            BOOL unicodeWnd = FALSE) : CWindowsObject(helpID, origin, unicodeWnd)
-#endif // _UNICODE
     {
         Modal = 0;
         Modul = modul;
